@@ -33,11 +33,51 @@ java -version
 ```
 You should see: `openjdk version "17.x.x"`
 
-#### Set JAVA_HOME (if needed)
+#### Set JAVA_HOME on macOS (if needed)
 ```bash
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 echo 'export JAVA_HOME=$(/usr/libexec/java_home -v 17)' >> ~/.zshrc
 ```
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
+#### Linux (Fedora/RHEL/CentOS)
+```bash
+sudo dnf install java-17-openjdk-devel
+```
+
+#### Linux (Arch Linux)
+```bash
+sudo pacman -S jdk-openjdk
+```
+
+#### Set JAVA_HOME on Linux (if needed)
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### Windows
+1. Download Java 17 from [Oracle](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html) or [OpenJDK](https://adoptium.net/)
+2. Run the installer (`.exe` file)
+3. Follow the installation wizard
+4. Verify installation:
+```cmd
+java -version
+```
+
+#### Set JAVA_HOME on Windows
+1. Right-click "This PC" → Properties → Advanced System Settings
+2. Click "Environment Variables"
+3. Under "System Variables", click "New"
+4. Variable name: `JAVA_HOME`
+5. Variable value: `C:\Program Files\Java\jdk-17` (adjust path if different)
+6. Click OK and restart Command Prompt/PowerShell
 
 ### 2. Install PostgreSQL
 
@@ -52,9 +92,48 @@ brew services start postgresql@14
 2. Install the downloaded package
 3. Start PostgreSQL service
 
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+#### Linux (Fedora/RHEL/CentOS)
+```bash
+sudo dnf install postgresql-server postgresql-contrib
+sudo postgresql-setup --initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+#### Linux (Arch Linux)
+```bash
+sudo pacman -S postgresql
+sudo -u postgres initdb -D /var/lib/postgres/data
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+```
+
+#### Windows
+1. Download PostgreSQL from [postgresql.org](https://www.postgresql.org/download/windows/)
+2. Run the installer (`.exe` file)
+3. During installation:
+   - Choose installation directory (default is fine)
+   - Set password for `postgres` user (remember this password!)
+   - Choose port (default 5432 is fine)
+4. Complete the installation
+5. PostgreSQL service starts automatically
+
 #### Verify PostgreSQL Installation
 ```bash
 psql --version
+```
+
+**Note:** On Linux, you may need to switch to the `postgres` user first:
+```bash
+sudo -u postgres psql
 ```
 
 ### 3. Install Maven (Optional - Spring Boot includes Maven Wrapper)
@@ -64,18 +143,50 @@ psql --version
 brew install maven
 ```
 
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt install maven
+```
+
+#### Linux (Fedora/RHEL/CentOS)
+```bash
+sudo dnf install maven
+```
+
+#### Linux (Arch Linux)
+```bash
+sudo pacman -S maven
+```
+
+#### Windows
+1. Download Maven from [maven.apache.org](https://maven.apache.org/download.cgi)
+2. Extract the zip file to a directory (e.g., `C:\Program Files\Apache\maven`)
+3. Add Maven to PATH:
+   - Right-click "This PC" → Properties → Advanced System Settings
+   - Click "Environment Variables"
+   - Under "System Variables", find "Path" and click "Edit"
+   - Add: `C:\Program Files\Apache\maven\bin`
+   - Click OK and restart Command Prompt/PowerShell
+
 #### Verify Maven Installation
 ```bash
 mvn -version
 ```
 
-**Note:** The project includes Maven Wrapper (`mvnw`), so Maven installation is optional.
+**Note:** The project includes Maven Wrapper (`mvnw` on Unix/Mac, `mvnw.cmd` on Windows), so Maven installation is optional.
 
 ## Installation
 
 ### 1. Clone or Navigate to Project Directory
+
+#### macOS / Linux
 ```bash
-cd /Users/user/Downloads/course-allocation
+cd /path/to/course-allocation
+```
+
+#### Windows
+```cmd
+cd C:\path\to\course-allocation
 ```
 
 ### 2. Verify Project Structure
@@ -100,13 +211,30 @@ course-allocation/
 brew services start postgresql@14
 ```
 
-#### Or start manually
+#### macOS (Manual Start)
 ```bash
 pg_ctl -D /usr/local/var/postgres start
 ```
 
+#### Linux (systemd)
+```bash
+sudo systemctl start postgresql
+```
+
+#### Linux (Check Status)
+```bash
+sudo systemctl status postgresql
+```
+
+#### Windows
+PostgreSQL service should start automatically after installation. To manage it:
+1. Open "Services" (Win + R, type `services.msc`)
+2. Find "postgresql-x64-XX" service
+3. Right-click → Start (if not running)
+
 ### 2. Create Database
 
+#### macOS / Linux
 Connect to PostgreSQL:
 ```bash
 psql -U postgres
@@ -114,30 +242,50 @@ psql -U postgres
 
 If you get a connection error, try:
 ```bash
+# Linux - switch to postgres user first
+sudo -u postgres psql
+
+# Or try without user specification
 psql postgres
 ```
 
-Create the database:
+#### Windows
+1. Open Command Prompt or PowerShell
+2. Navigate to PostgreSQL bin directory (usually `C:\Program Files\PostgreSQL\XX\bin`)
+3. Run:
+```cmd
+psql -U postgres
+```
+Or use pgAdmin (GUI tool installed with PostgreSQL)
+
+#### Create the Database
+Once connected, run:
 ```sql
 CREATE DATABASE course_allocation;
 ```
 
-Verify database creation:
+#### Verify Database Creation
 ```sql
 \l
 ```
 
 You should see `course_allocation` in the list.
 
-Exit PostgreSQL:
+#### Exit PostgreSQL
 ```sql
 \q
 ```
 
 ### 3. Verify Database Connection
 
+#### macOS / Linux
 Test connection:
 ```bash
+psql -U postgres -d course_allocation
+```
+
+#### Windows
+```cmd
 psql -U postgres -d course_allocation
 ```
 
@@ -389,6 +537,8 @@ The application automatically seeds sample data on first startup:
 **Error:** `Connection refused` or `Failed to determine a suitable driver class`
 
 **Solution:**
+
+#### macOS
 1. Verify PostgreSQL is running:
    ```bash
    brew services list
@@ -397,18 +547,67 @@ The application automatically seeds sample data on first startup:
    ```bash
    psql -U postgres -l
    ```
+
+#### Linux
+1. Verify PostgreSQL is running:
+   ```bash
+   sudo systemctl status postgresql
+   ```
+2. Start if not running:
+   ```bash
+   sudo systemctl start postgresql
+   ```
+3. Check database exists:
+   ```bash
+   sudo -u postgres psql -l
+   ```
+
+#### Windows
+1. Verify PostgreSQL service is running:
+   - Open Services (Win + R, type `services.msc`)
+   - Find "postgresql-x64-XX" service
+   - Ensure it's "Running"
+2. Check database exists:
+   ```cmd
+   psql -U postgres -l
+   ```
+
+#### All Platforms
 3. Verify credentials in `application.properties`
+4. Ensure database name matches: `course_allocation`
 
 ### Port Already in Use
 
 **Error:** `Port 8080 is already in use`
 
 **Solution:**
+
+#### macOS / Linux
 1. Find process using port 8080:
    ```bash
    lsof -i :8080
+   # or
+   netstat -tulpn | grep 8080
    ```
-2. Kill the process or change port in `application.properties`:
+2. Kill the process:
+   ```bash
+   kill -9 <PID>
+   ```
+3. Or change port in `application.properties`:
+   ```properties
+   server.port=8081
+   ```
+
+#### Windows
+1. Find process using port 8080:
+   ```cmd
+   netstat -ano | findstr :8080
+   ```
+2. Kill the process (replace `<PID>` with the process ID):
+   ```cmd
+   taskkill /PID <PID> /F
+   ```
+3. Or change port in `application.properties`:
    ```properties
    server.port=8081
    ```
