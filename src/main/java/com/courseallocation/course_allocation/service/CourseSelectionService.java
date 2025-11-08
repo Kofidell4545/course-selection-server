@@ -28,69 +28,79 @@ public class CourseSelectionService {
     private final CourseRepository courseRepository;
     private final CourseService courseService;
 
+    // Business rules: Maximum limits per semester
     private static final int MAX_CREDITS_PER_SEMESTER = 21;
     private static final int MAX_COURSES_PER_SEMESTER = 7;
 
     public List<CourseResponse> getAvailableCoursesForStudent(Long studentId, Long semesterId) {
-        Student student = studentRepository.findById(studentId)
+        // Fetch student details
+        Student currentStudent = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
 
         return courseService.getAvailableCoursesForStudent(
-                student.getDepartment(),
-                student.getYear(),
+                currentStudent.getDepartment(),
+                currentStudent.getYear(),
                 semesterId
         );
     }
 
     public EnrollmentResponse selectCourse(Long studentId, Long courseId) {
-        Student student = studentRepository.findById(studentId)
+        // Validate student and course existence
+        Student currentStudent = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
 
-        Course course = courseRepository.findById(courseId)
+        Course selectedCourse = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
 
-        if (!course.getDepartment().equals(student.getDepartment())) {
+        // Validate department match
+        if (!selectedCourse.getDepartment().equals(currentStudent.getDepartment())) {
             throw new RuntimeException("Course is not available for your department");
         }
 
-        if (!course.getLevel().equals(student.getYear())) {
+        // Validate year level match
+        if (!selectedCourse.getLevel().equals(currentStudent.getYear())) {
             throw new RuntimeException("Course is not available for your year level");
         }
 
-        if (enrollmentRepository.existsByStudentAndCourse(student, course)) {
+        // Check for duplicate enrollment
+        if (enrollmentRepository.existsByStudentAndCourse(currentStudent, selectedCourse)) {
             throw new RuntimeException("You are already enrolled in this course");
         }
 
-        if (course.getCurrentEnrollment() >= course.getMaxCapacity()) {
+        // Check course capacity
+        if (selectedCourse.getCurrentEnrollment() >= selectedCourse.getMaxCapacity()) {
             throw new RuntimeException("Course is full. Cannot enroll more students");
         }
 
-        List<Enrollment> currentEnrollments = enrollmentRepository.findByStudentId(studentId);
-        int totalCredits = currentEnrollments.stream()
+        // Check credit and course limits
+        List<Enrollment> existingEnrollments = enrollmentRepository.findByStudentId(studentId);
+        int accumulatedCredits = existingEnrollments.stream()
                 .mapToInt(e -> e.getCourse().getCredits())
                 .sum();
 
-        if (totalCredits + course.getCredits() > MAX_CREDITS_PER_SEMESTER) {
+        if (accumulatedCredits + selectedCourse.getCredits() > MAX_CREDITS_PER_SEMESTER) {
             throw new RuntimeException("Credit limit exceeded. Maximum " + MAX_CREDITS_PER_SEMESTER + 
-                    " credits allowed per semester. You currently have " + totalCredits + " credits");
+                    " credits allowed per semester. You currently have " + accumulatedCredits + " credits");
         }
 
-        if (currentEnrollments.size() >= MAX_COURSES_PER_SEMESTER) {
+        if (existingEnrollments.size() >= MAX_COURSES_PER_SEMESTER) {
             throw new RuntimeException("Course limit exceeded. Maximum " + MAX_COURSES_PER_SEMESTER + 
                     " courses allowed per semester");
         }
 
-        Enrollment enrollment = new Enrollment();
-        enrollment.setStudent(student);
-        enrollment.setCourse(course);
-        enrollment.setStatus("ENROLLED");
+        // Create new enrollment
+        Enrollment newEnrollment = new Enrollment();
+        newEnrollment.setStudent(currentStudent);
+        newEnrollment.setCourse(selectedCourse);
+        newEnrollment.setStatus("ENROLLED");
 
-        Enrollment saved = enrollmentRepository.save(enrollment);
+        Enrollment savedEnrollment = enrollmentRepository.save(newEnrollment);
 
-        course.setCurrentEnrollment(course.getCurrentEnrollment() + 1);
-        courseRepository.save(course);
+        // Update course enrollment count
+        selectedCourse.setCurrentEnrollment(selectedCourse.getCurrentEnrollment() + 1);
+        courseRepository.save(selectedCourse);
 
-        return mapToResponse(saved);
+        return mapToResponse(savedEnrollment);
     }
 
     public void dropCourse(Long studentId, Long enrollmentId) {
